@@ -6,7 +6,7 @@
   "folder-1": [
     {
       "name": "infrastructure-provision",
-      "repo": "https://github.com/essiendaniel33/marketvector.git",
+      "repo": "https://github.com/ogob31/marketvector.git",
       "branch": "main",
       "jenkinsfile": "terraform/Jenkinsfile"
     }
@@ -14,7 +14,7 @@
   "folder-2": [
     {
       "name": "continuous-integration-continuous-deployment",
-      "repo": "https://github.com/essiendaniel33/marketvector.git",
+      "repo": "https://github.com/ogob31/marketvector.git",
       "branch": "main",
       "jenkinsfile": "continuous-integration-continuous-deployment/Jenkinsfile"
     }

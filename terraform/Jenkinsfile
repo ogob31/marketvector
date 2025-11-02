@@ -8,64 +8,74 @@ pipeline {
         string(name: 'GITHUB_CREDENTIAL', defaultValue: 'github_cred', description: 'Github access credentials id')
         string(name: 'GITHUB_REPO_URL', defaultValue: 'https://github.com/ogob31/marketvector.git', description: 'Github repository url')
         string(name: 'GITHUB_BRANCH', defaultValue: 'main', description: 'Github branch for your build')
-        choice(name: 'TERRAFORM_ACTION', choices: ['', 'apply', 'destroy'], description: 'Select Terraform action: Apply or Destroy')
-    }
-
-    environment {
-        GITHUB_CREDENTIAL = "${params.GITHUB_CREDENTIAL}"
-        GITHUB_REPO_URL = "${params.GITHUB_REPO_URL}"
-        GITHUB_BRANCH = "${params.GITHUB_BRANCH}"
-        TERRAFORM_ACTION = "${params.TERRAFORM_ACTION}" 
+        choice(name: 'TERRAFORM_ACTION', choices: "apply\ndestroy", description: 'Select Terraform action: Apply or Destroy')
     }
 
     stages {
         stage("Validate Parameters") {
             steps {
                 script {
-                    if (TERRAFORM_ACTION == null || TERRAFORM_ACTION.trim() == '') {
+                    if (params.TERRAFORM_ACTION == null || params.TERRAFORM_ACTION.trim() == '') {
                         error('TERRAFORM_ACTION is a required parameter. Please choose either "apply" or "destroy".')
                     }
                 }
             }
         }
-        
+
         stage("Checkout Code From GitHub") {
             steps {
-                script {
-                    git branch: "${GITHUB_BRANCH}", credentialsId: "${GITHUB_CREDENTIAL}", url: "${GITHUB_REPO_URL}"
-                }
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "${params.GITHUB_BRANCH}"]],
+                    extensions: [],
+                    userRemoteConfigs: [[
+                        credentialsId: "${params.GITHUB_CREDENTIAL}",
+                        url: "${params.GITHUB_REPO_URL}"
+                    ]]
+                ])
             }
         }
 
         stage('Terraform Init') {
             steps {
-                script {
-                    // Change into the Terraform code directory
-                    dir("${WORKSPACE}/terraform") {
-                            sh 'terraform init'              
-                    }
+                dir('terraform') {
+                    sh 'terraform init'
                 }
             }
         }
 
         stage('Terraform Plan') {
             steps {
-                script {
-                    dir("${WORKSPACE}/terraform") {
-                            sh 'terraform plan'
-                     }
-                 }
-             }
-         }
-        
+                dir('terraform') {
+                    sh 'terraform plan'
+                }
+            }
+        }
+
         stage('Terraform Apply Or Destroy') {
             steps {
                 script {
-                    dir("${WORKSPACE}/terraform") {
-                            sh 'terraform "${TERRAFORM_ACTION}" -auto-approve'
+                    dir('terraform') {
+                        if (params.TERRAFORM_ACTION == 'destroy') {
+                            sh 'terraform destroy -auto-approve'
+                        } else {
+                            sh 'terraform apply -auto-approve'
                         }
                     }
                 }
             }
         }
     }
+
+    post {
+        always {
+            echo "Pipeline execution completed - ${currentBuild.result}"
+        }
+        success {
+            echo "Terraform ${params.TERRAFORM_ACTION} completed successfully!"
+        }
+        failure {
+            echo "Pipeline failed. Check the logs for details."
+        }
+    }
+}
